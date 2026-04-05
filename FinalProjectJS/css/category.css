@@ -11,7 +11,7 @@ body {
 }
 
 .header {
-  background: #4338CA;
+  background: #4338ca;
   color: #fff;
   height: 56px;
   padding: 0 22px;
@@ -131,7 +131,9 @@ body {
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .menu-item:hover {
@@ -169,7 +171,9 @@ body {
   font-size: 15px;
   text-decoration: none;
   background: #ffffff;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .sidebar-item .icon {
@@ -188,7 +192,7 @@ body {
 .hero {
   width: 800px;
   margin: 18px auto 14px;
-  background: #4F46E5;
+  background: #4f46e5;
   color: white;
   text-align: center;
   border-radius: 10px;
@@ -251,7 +255,7 @@ body {
 }
 
 .money {
-  color: #22C55E;
+  color: #22c55e;
   font-size: 23px;
   font-weight: 500;
 }
@@ -382,9 +386,16 @@ select:focus {
   border: none;
   background: transparent;
   cursor: pointer;
-  color: #374151;
-  font-size: 14px;
+  color: #111827;
+  font-size: 16px;
   line-height: 1;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+}
+
+.action-btn:hover {
+  background: #eceef5;
 }
 
 .card-over {

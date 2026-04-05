@@ -1,6 +1,6 @@
 const byId = (id) => document.getElementById(id);
 
-const defaultUsers = [
+const users = [
   {
     id: 1,
     fullName: "Nguyen Van A",
@@ -46,24 +46,43 @@ const getData = (key, fallback = []) => {
 const setData = (key, value) =>
   localStorage.setItem(key, JSON.stringify(value));
 
+const getCurrentUserId = () =>
+  localStorage.getItem("currentUser") ||
+  localStorage.getItem("currentUserId") ||
+  "guest";
+
+const getUserScopedKey = (baseKey) => `${baseKey}_${getCurrentUserId()}`;
+const LEGACY_FINANCE_MIGRATION_DONE_KEY = "legacyFinanceMigratedOnce_v1";
+
+const getScopedData = (key, fallback) =>
+  getData(getUserScopedKey(key), fallback);
+
+const setScopedData = (key, value) => setData(getUserScopedKey(key), value);
+
 const pad2 = (n) => String(n).padStart(2, "0");
 const getCurrentMonth = () => {
   const now = new Date();
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
 };
 
+const getSelectedBudgetMonth = () =>
+  localStorage.getItem(getUserScopedKey("selectedBudgetMonth"));
+
+const saveSelectedBudgetMonth = (month) =>
+  localStorage.setItem(getUserScopedKey("selectedBudgetMonth"), month);
+
 const formatVnd = (value) =>
   `${Number(value || 0).toLocaleString("vi-VN")} VND`;
 
-const getUsers = () => getData("users", defaultUsers);
+const getUsers = () => getData("users", users);
 const saveUsers = (users) => setData("users", users);
-const getBudgets = () => getData("budgets", {});
-const saveBudgets = (data) => setData("budgets", data);
-const getRemainingBudgets = () => getData("remainingBudgets", {});
-const saveRemainingBudgets = (data) => setData("remainingBudgets", data);
+const getBudgets = () => getScopedData("budgets", {});
+const saveBudgets = (data) => setScopedData("budgets", data);
+const getRemainingBudgets = () => getScopedData("remainingBudgets", {});
+const saveRemainingBudgets = (data) => setScopedData("remainingBudgets", data);
 
 const getSpentByMonth = (month) => {
-  const transactions = getData("transactions", []);
+  const transactions = getScopedData("transactions", []);
   return transactions
     .filter((item) => String(item.createdDate || "").startsWith(month))
     .reduce((total, item) => total + Number(item.total || 0), 0);
@@ -76,19 +95,53 @@ const setRemainingByMonth = (month, remaining) => {
 };
 
 const state = {
-  month: getCurrentMonth(),
+  month: getSelectedBudgetMonth() || getCurrentMonth(),
   keyword: "",
   sort: "amount-desc",
   page: 1,
   pageSize: 5,
 };
 
+const setHistoryWarning = (message, type = "error") => {
+  const warning = byId("historyWarning");
+  if (!warning) return;
+
+  warning.textContent = message || "";
+  warning.classList.toggle("success", type === "success");
+};
+
 const initStorage = () => {
-  if (!localStorage.getItem("users")) saveUsers(defaultUsers);
-  if (!localStorage.getItem("transactions")) setData("transactions", []);
-  if (!localStorage.getItem("monthlyCategories"))
-    setData("monthlyCategories", []);
-  if (!localStorage.getItem("budgets")) saveBudgets({});
+  if (!localStorage.getItem("users")) saveUsers(users);
+  const shouldUseLegacyData =
+    localStorage.getItem(LEGACY_FINANCE_MIGRATION_DONE_KEY) !== "1";
+
+  const migrateLegacyJson = (baseKey, fallback) => {
+    const scopedKey = getUserScopedKey(baseKey);
+    if (localStorage.getItem(scopedKey)) return;
+
+    if (!shouldUseLegacyData) {
+      localStorage.setItem(scopedKey, JSON.stringify(fallback));
+      return;
+    }
+
+    const legacy = localStorage.getItem(baseKey);
+    if (!legacy) {
+      localStorage.setItem(scopedKey, JSON.stringify(fallback));
+      return;
+    }
+
+    try {
+      localStorage.setItem(scopedKey, JSON.stringify(JSON.parse(legacy)));
+    } catch {
+      localStorage.setItem(scopedKey, JSON.stringify(fallback));
+    }
+  };
+
+  migrateLegacyJson("transactions", []);
+  migrateLegacyJson("monthlyCategories", []);
+  migrateLegacyJson("budgets", {});
+  migrateLegacyJson("remainingBudgets", {});
+  localStorage.setItem(LEGACY_FINANCE_MIGRATION_DONE_KEY, "1");
 };
 
 const requireLogin = () => {
@@ -151,7 +204,7 @@ const initAccountDropdown = () => {
   if (accountInfoName) accountInfoName.textContent = user?.fullName || "-";
   if (accountInfoEmail) accountInfoEmail.textContent = user?.email || "-";
   if (accountInfoRole)
-    accountInfoRole.textContent = `Vai tro: ${user?.role || "user"}`;
+    accountInfoRole.textContent = `Vai trò: ${user?.role || "user"}`;
 
   accountToggle.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -162,13 +215,14 @@ const initAccountDropdown = () => {
 
   menuLogoutBtn?.addEventListener("click", () => {
     Swal.fire({
-      title: "Are you sure?",
-      text: "You won't be able to revert this!",
+      title: "Bạn có chắc muốn đăng xuất?",
+      text: "Bạn sẽ cần đăng nhập lại để tiếp tục.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#3085d6",
       cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, delete it!",
+      confirmButtonText: "Có, đăng xuất",
+      cancelButtonText: "Hủy",
     }).then((result) => {
       if (result.isConfirmed) {
         localStorage.removeItem("currentUser");
@@ -180,7 +234,7 @@ const initAccountDropdown = () => {
 };
 
 const getCategoryMap = () => {
-  const monthly = getData("monthlyCategories", []);
+  const monthly = getScopedData("monthlyCategories", []);
   const map = new Map();
 
   monthly.forEach((monthRecord) => {
@@ -193,7 +247,7 @@ const getCategoryMap = () => {
 };
 
 const getCategoriesByMonth = (month) => {
-  const monthly = getData("monthlyCategories", []);
+  const monthly = getScopedData("monthlyCategories", []);
   const monthObj = monthly.find((m) => m.month === month);
   return monthObj?.categories || [];
 };
@@ -205,7 +259,7 @@ const renderCategoryOptions = () => {
   const categories = getCategoriesByMonth(state.month);
 
   categoryInput.innerHTML = [
-    '<option value="">Tien chi tieu</option>',
+    '<option value="">Tiền chi tiêu</option>',
     ...categories.map(
       (cat) => `<option value="${cat.id}">${cat.name}</option>`,
     ),
@@ -213,7 +267,7 @@ const renderCategoryOptions = () => {
 };
 
 const getProcessedTransactions = () => {
-  const transactions = getData("transactions", []);
+  const transactions = getScopedData("transactions", []);
   const categoryMap = getCategoryMap();
 
   return transactions.map((item, index) => {
@@ -321,16 +375,26 @@ const renderPagination = (totalItems, totalPage) => {
 };
 
 const deleteTransaction = (index) => {
-  const transactions = getData("transactions", []);
+  const transactions = getScopedData("transactions", []);
   if (index < 0 || index >= transactions.length) return;
 
-  const ok = window.confirm("Ban co chac muon xoa giao dich nay?");
-  if (!ok) return;
+  Swal.fire({
+    title: "Bạn có chắc muốn xóa giao dịch này?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Có, xóa",
+    cancelButtonText: "Hủy",
+  }).then((result) => {
+    if (!result.isConfirmed) return;
 
-  transactions.splice(index, 1);
-  setData("transactions", transactions);
-  renderBudget();
-  renderTable();
+    transactions.splice(index, 1);
+    setScopedData("transactions", transactions);
+    setHistoryWarning("Đã xóa giao dịch.", "success");
+    renderBudget();
+    renderTable();
+  });
 };
 
 const addTransaction = () => {
@@ -345,19 +409,19 @@ const addTransaction = () => {
   const note = String(noteInput.value || "").trim();
 
   if (!amount || amount <= 0) {
-    alert("Vui long nhap so tien hop le.");
+    setHistoryWarning("Vui lòng nhập số tiền hợp lệ.");
     return;
   }
 
   if (!categoryId) {
-    alert("Vui long chon danh muc chi tieu.");
+    setHistoryWarning("Vui lòng chọn danh mục chi tiêu.");
     return;
   }
 
   const now = new Date();
   const dateText = `${state.month}-${pad2(now.getDate())}`;
 
-  const transactions = getData("transactions", []);
+  const transactions = getScopedData("transactions", []);
   transactions.push({
     id: Date.now(),
     categoryId,
@@ -366,10 +430,11 @@ const addTransaction = () => {
     createdDate: dateText,
   });
 
-  setData("transactions", transactions);
+  setScopedData("transactions", transactions);
   amountInput.value = "";
   noteInput.value = "";
   categoryInput.value = "";
+  setHistoryWarning("Đã thêm giao dịch.", "success");
 
   state.page = 1;
   renderBudget();
@@ -389,14 +454,33 @@ const renderBudget = () => {
   remainingText.textContent = formatVnd(remainingAmount);
 };
 
+// Tim kiem giao dich theo tu khoa trong history
+const searchHistory = () => {
+  const searchInputElement = byId("searchInput");
+  if (!searchInputElement) return;
+
+  const keyword = searchInputElement.value.toLowerCase().trim();
+
+  if (keyword.length === 0) {
+    state.keyword = "";
+  } else {
+    state.keyword = keyword;
+  }
+
+  state.page = 1;
+  renderTable();
+};
+
 const initMonthBudget = () => {
   const monthInput = byId("monthSelect");
   if (!monthInput) return;
 
   monthInput.value = state.month;
+  saveSelectedBudgetMonth(state.month);
 
   monthInput.addEventListener("change", () => {
     state.month = monthInput.value || getCurrentMonth();
+    saveSelectedBudgetMonth(state.month);
     state.page = 1;
     renderBudget();
     renderCategoryOptions();
@@ -432,16 +516,23 @@ const initHistoryActions = () => {
     renderTable();
   });
 
-  const applySearch = () => {
-    state.keyword = searchInput.value || "";
-    state.page = 1;
-    renderTable();
-  };
-
-  searchBtn.addEventListener("click", applySearch);
+  searchBtn.addEventListener("click", searchHistory);
   addTransactionBtn.addEventListener("click", addTransaction);
+  [searchInput, addTransactionBtn].forEach((el) => {
+    el?.addEventListener("focus", () => setHistoryWarning(""));
+  });
+
+  const amountInput = byId("amountInput");
+  const categoryInput = byId("categoryInput");
+  const noteInput = byId("noteInput");
+
+  [amountInput, categoryInput, noteInput].forEach((el) => {
+    el?.addEventListener("input", () => setHistoryWarning(""));
+    el?.addEventListener("change", () => setHistoryWarning(""));
+  });
+
   searchInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") applySearch();
+    if (event.key === "Enter") searchHistory();
   });
 
   tableBody.addEventListener("click", (event) => {

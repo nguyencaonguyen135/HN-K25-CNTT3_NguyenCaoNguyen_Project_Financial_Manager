@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tài Chính Cá Nhân</title>
-    <link rel="stylesheet" href="../css/category.css" />
+    <title>Thống kê chi tiêu theo tháng</title>
+    <link rel="stylesheet" href="../css/monthly-report.css" />
     <link rel="stylesheet" href="../css/reponsive.css" />
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   </head>
@@ -14,9 +14,6 @@
       <div class="account" id="account">
         <button type="button" id="accountToggle" class="account-toggle">
           <span id="currentUserName" class="account-label">Tài khoản</span>
-          <span class="account-caret" aria-hidden="true"
-            ><img src="../assets/icons/SVG.png" alt=""
-          /></span>
         </button>
         <div
           id="accountMenu"
@@ -37,7 +34,7 @@
             id="menuLogout"
             role="menuitem"
           >
-            Đăng Xuất
+            Đăng xuất
           </button>
         </div>
       </div>
@@ -56,7 +53,7 @@
       </a>
 
       <a
-        class="sidebar-item active"
+        class="sidebar-item"
         data-page="category"
         href="../pages/category.html"
       >
@@ -74,62 +71,49 @@
       </a>
 
       <a
-        class="sidebar-item"
+        class="sidebar-item active"
         data-page="report"
         href="../pages/monthly-report.html"
       >
         <span class="icon"
-          ><img src="../assets/icons/history.png" alt="Monthly Report"
+          ><img src="../assets/icons/history.png" alt="Report"
         /></span>
         <span>Monthly Report</span>
       </a>
     </aside>
 
     <section class="hero">
-      <h2>🎯 Kiểm soát chi tiêu thông minh</h2>
-      <p>Theo dõi ngân sách và thu chi hàng tháng dễ dàng</p>
+      <h2>📊 Thống kê chi tiêu theo tháng</h2>
+      <p>Xem nhanh các tháng đạt ngân sách hay vượt ngân sách</p>
     </section>
 
     <main class="container">
-      <h2 class="title">📊 Quản Lý Tài Chính Cá Nhân</h2>
+      <h2 class="title">Thống kê chi tiêu theo tháng</h2>
 
-      <section class="card result-card">
-        <p>Số tiền còn lại</p>
-        <h3 id="remainingText" class="money">0 VND</h3>
-      </section>
-
-      <section class="card card-center" id="monthSection">
-        <label for="monthSelect">📅 Chọn tháng:</label>
-        <input type="month" id="monthSelect" />
-      </section>
-
-      <section class="card" id="categoriesSection">
-        <h3 class="section-title">
-          <i class="fa-solid fa-briefcase"></i> Quản lý danh mục (Theo tháng)
-        </h3>
-
-        <div class="inline-form">
-          <select id="categoryNameSelect" title="Tên danh mục">
-            <option value="">Tên danh mục</option>
-            <option value="Tiền tích lũy">Tiền tích lũy</option>
-            <option value="Ăn uống">Ăn uống</option>
-            <option value="Đi lại">Đi lại</option>
-            <option value="Mua sắm">Mua sắm</option>
-            <option value="Giải trí">Giải trí</option>
+      <section class="card">
+        <div class="filter-row">
+          <label for="statusFilter">Lọc theo trạng thái:</label>
+          <select id="statusFilter">
+            <option value="all">Tất cả</option>
+            <option value="ok">Đạt ngân sách</option>
+            <option value="over">Vượt ngân sách</option>
           </select>
-          <input
-            type="number"
-            id="categoryLimitInput"
-            placeholder="Giới hạn (VND)"
-          />
-          <button type="button" id="addCategoryBtn" class="btn-add">
-            Thêm danh mục
-          </button>
         </div>
+      </section>
 
-        <p id="categoryWarning" class="warning-text"></p>
-
-        <div id="categoryGrid" class="category-grid"></div>
+      <section class="card table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tháng</th>
+              <th>Ngân sách</th>
+              <th>Đã chi</th>
+              <th>Còn lại</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody id="reportTableBody"></tbody>
+        </table>
       </section>
     </main>
 
@@ -137,6 +121,6 @@
       © 2026 Quản Lý Tài Chính Cá Nhân. by Cao Nguyên!
     </footer>
 
-    <script src="../js/category.js"></script>
+    <script src="../js/monthly-report.js"></script>
   </body>
 </html>

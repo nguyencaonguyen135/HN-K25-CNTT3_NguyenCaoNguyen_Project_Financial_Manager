@@ -72,6 +72,17 @@
         /></span>
         <span>History</span>
       </a>
+
+      <a
+        class="sidebar-item"
+        data-page="report"
+        href="../pages/monthly-report.html"
+      >
+        <span class="icon"
+          ><img src="../assets/icons/history.png" alt="Monthly Report"
+        /></span>
+        <span>Monthly Report</span>
+      </a>
     </aside>
 
     <section class="hero">
@@ -123,8 +134,56 @@
       </section>
 
       <div class="btn-group">
-        <button class="btn-outline">Change Information</button>
-        <button class="btn-outline">Change Password</button>
+        <button class="btn-outline btn-change-info">Change Information</button>
+        <button class="btn-outline btn-change-password">Change Password</button>
+      </div>
+
+      <div id="changePasswordModal" class="cp-modal-overlay">
+        <div
+          class="cp-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cpModalTitle"
+        >
+          <button
+            type="button"
+            class="cp-close"
+            id="cpCloseBtn"
+            aria-label="Đóng"
+          >
+            ×
+          </button>
+          <h3 id="cpModalTitle" class="cp-title">Change Password</h3>
+
+          <div class="cp-field">
+            <label for="oldPasswordInput">Old Password <i>*</i></label>
+            <input type="password" id="oldPasswordInput" />
+            <p id="oldPasswordError" class="cp-error"></p>
+          </div>
+
+          <div class="cp-field">
+            <label for="newPasswordInput">New Password <i>*</i></label>
+            <input type="password" id="newPasswordInput" />
+            <p id="newPasswordError" class="cp-error"></p>
+          </div>
+
+          <div class="cp-field">
+            <label for="confirmPasswordInput"
+              >Confirm New Password <i>*</i></label
+            >
+            <input type="password" id="confirmPasswordInput" />
+            <p id="confirmPasswordError" class="cp-error"></p>
+          </div>
+
+          <div class="cp-actions">
+            <button type="button" class="cp-btn cp-btn-cancel" id="cpCancelBtn">
+              Cancel
+            </button>
+            <button type="button" class="cp-btn cp-btn-save" id="cpSaveBtn">
+              Save
+            </button>
+          </div>
+        </div>
       </div>
     </main>
 

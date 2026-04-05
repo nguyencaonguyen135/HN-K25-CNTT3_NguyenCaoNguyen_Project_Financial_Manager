@@ -362,6 +362,114 @@ button {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+/* CHANGE PASSWORD MODAL */
+.cp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+.cp-modal-overlay.show {
+  display: flex;
+}
+
+.cp-modal {
+  width: 100%;
+  max-width: 620px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.24);
+  padding: 22px 20px 18px;
+  position: relative;
+}
+
+.cp-title {
+  font-size: 32px;
+  margin-bottom: 16px;
+  color: #1f2937;
+}
+
+.cp-close {
+  position: absolute;
+  right: 12px;
+  top: 8px;
+  border: none;
+  background: transparent;
+  color: #4b5563;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cp-field {
+  margin-bottom: 8px;
+}
+
+.cp-field label {
+  display: block;
+  margin-bottom: 6px;
+  color: #374151;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.cp-field label i {
+  color: #ef4444;
+}
+
+.cp-field input {
+  width: 100%;
+  height: 44px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.cp-error {
+  min-height: 18px;
+  margin-top: 4px;
+  font-size: 14px;
+  color: #dc2626;
+}
+
+.cp-actions {
+  border-top: 1px solid #e5e7eb;
+  margin-top: 10px;
+  padding-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cp-btn {
+  min-width: 80px;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 14px;
+  border: 1px solid transparent;
+}
+
+.cp-btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.cp-btn-save {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.cp-btn:hover {
+  opacity: 0.92;
+}
+
 .btn {
   height: 34px;
   padding: 0 14px;

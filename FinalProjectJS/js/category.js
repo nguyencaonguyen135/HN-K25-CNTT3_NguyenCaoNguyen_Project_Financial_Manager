@@ -13,83 +13,54 @@ const getData = (key, fallback = []) => {
 const setData = (key, value) =>
   localStorage.setItem(key, JSON.stringify(value));
 
-const pad2 = (n) => String(n).padStart(2, "0");
-const getCurrentMonth = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
-};
+const getCurrentUserId = () =>
+  localStorage.getItem("currentUser") ||
+  localStorage.getItem("currentUserId") ||
+  null;
+
+const getUserScopedKey = (baseKey) => `${baseKey}_${getCurrentUserId()}`;
+
+const getCurrentMonth = () => new Date().toISOString().slice(0, 7);
+
+const getSelectedBudgetMonth = () =>
+  localStorage.getItem(getUserScopedKey("selectedBudgetMonth"));
+
+const saveSelectedBudgetMonth = (month) =>
+  localStorage.setItem(getUserScopedKey("selectedBudgetMonth"), month);
 
 const formatVnd = (value) =>
   `${Number(value || 0).toLocaleString("vi-VN")} VND`;
 
-const getBudgets = () => getData("budgets", {});
-const getRemainingBudgets = () => getData("remainingBudgets", {});
-const saveRemainingBudgets = (data) => setData("remainingBudgets", data);
+// ===== Du lieu theo user =====
+const getBudgets = () => getData(getUserScopedKey("budgets"), {});
+const getTransactions = () => getData(getUserScopedKey("transactions"), []);
+const getMonthlyCategories = () =>
+  getData(getUserScopedKey("monthlyCategories"), []);
+const saveMonthlyCategories = (data) =>
+  setData(getUserScopedKey("monthlyCategories"), data);
 
-const getSpentByMonth = (month) => {
-  const transactions = getData("transactions", []);
-  return transactions
-    .filter((item) => String(item.createdDate || "").startsWith(month))
-    .reduce((total, item) => total + Number(item.total || 0), 0);
-};
-
-const setRemainingByMonth = (month, remaining) => {
-  const remainingBudgets = getRemainingBudgets();
-  remainingBudgets[month] = Number(remaining || 0);
-  saveRemainingBudgets(remainingBudgets);
-};
-
-const renderRemainingBudget = (month) => {
-  const remainingText = byId("remainingText");
-  if (!remainingText) return;
-
-  const budgets = getBudgets();
-  const budgetAmount = Number(budgets[month] || 0);
-  const spentAmount = getSpentByMonth(month);
-  const remainingAmount = budgetAmount - spentAmount;
-
-  setRemainingByMonth(month, remainingAmount);
-  remainingText.textContent = formatVnd(remainingAmount);
-};
-
-const initStorage = () => {
-  if (!localStorage.getItem("monthlyCategories"))
-    setData("monthlyCategories", []);
-  if (!localStorage.getItem("transactions")) setData("transactions", []);
-  if (!localStorage.getItem("users")) setData("users", []);
-};
-
-const requireLogin = () => {
-  const userId = localStorage.getItem("currentUser");
-  if (!userId) {
-    window.location.href = "login.html";
-    return false;
-  }
-  return true;
-};
-
-const getCurrentUser = () => {
-  const userId = localStorage.getItem("currentUser");
-  if (!userId) return null;
-  const users = getData("users", []);
-  return users.find((u) => String(u.id) === String(userId)) || null;
-};
+let editingId = null;
 
 const getMonthRecord = (month) => {
-  const monthly = getData("monthlyCategories", []);
-  let record = monthly.find((m) => m.month === month);
+  const monthly = getMonthlyCategories();
+  return monthly.find((m) => m.month === month) || null;
+};
 
-  if (!record) {
-    record = { id: Date.now(), month, categories: [] };
-    monthly.push(record);
-    setData("monthlyCategories", monthly);
+const ensureMonthRecord = (month) => {
+  const monthly = getMonthlyCategories();
+  let monthObj = monthly.find((m) => m.month === month);
+
+  if (!monthObj) {
+    monthObj = { id: Date.now(), month, categories: [] };
+    monthly.push(monthObj);
+    saveMonthlyCategories(monthly);
   }
 
-  return record;
+  return monthObj;
 };
 
 const getSpentByCategoryMap = (month) => {
-  const transactions = getData("transactions", []);
+  const transactions = getTransactions();
   const map = new Map();
 
   transactions
@@ -105,7 +76,7 @@ const getSpentByCategoryMap = (month) => {
 };
 
 const syncMonthSpent = (month) => {
-  const monthly = getData("monthlyCategories", []);
+  const monthly = getMonthlyCategories();
   const monthObj = monthly.find((m) => m.month === month);
   if (!monthObj) return;
 
@@ -120,7 +91,271 @@ const syncMonthSpent = (month) => {
     }
   });
 
-  if (changed) setData("monthlyCategories", monthly);
+  if (changed) saveMonthlyCategories(monthly);
+};
+
+const getCategories = (month) => {
+  const monthObj = getMonthRecord(month);
+  return monthObj?.categories || [];
+};
+
+const saveCategories = (month, categories) => {
+  const monthly = getMonthlyCategories();
+  const monthObj = monthly.find((m) => m.month === month);
+
+  if (!monthObj) {
+    monthly.push({ id: Date.now(), month, categories });
+  } else {
+    monthObj.categories = categories;
+  }
+
+  saveMonthlyCategories(monthly);
+};
+
+const renderCategories = () => {
+  const grid = byId("categoryGrid");
+  const warning = byId("categoryWarning");
+  const monthSelect = byId("monthSelect");
+
+  if (!grid || !warning || !monthSelect) return;
+
+  const month = monthSelect.value || getCurrentMonth();
+
+  // Cap nhat spent theo giao dich moi nhat
+  syncMonthSpent(month);
+
+  const categories = getCategories(month);
+
+  if (categories.length === 0) {
+    grid.innerHTML =
+      '<p class="empty">Chưa có danh mục nào trong tháng này.</p>';
+    warning.textContent = "";
+    return;
+  }
+
+  const hasOver = categories.some(
+    (cat) => Number(cat.spent || 0) > Number(cat.budget || 0),
+  );
+  warning.textContent = hasOver ? "Có danh mục đã vượt hạn mức." : "";
+
+  grid.innerHTML = categories
+    .map((category) => {
+      const spent = Number(category.spent || 0);
+      const budget = Number(category.budget || 0);
+      const overClass = spent > budget ? "card-over" : "";
+
+      return `
+        <article class="category-card ${overClass}">
+          <span class="card-icon">$</span>
+          <div>
+            <h4 class="card-title">${category.name}</h4>
+            <p class="card-limit">${formatVnd(budget)} | Đã chi: ${formatVnd(spent)}</p>
+          </div>
+          <div class="card-actions">
+            <button type="button" class="action-btn" data-action="delete" data-id="${category.id}" title="Xóa">✕</button>
+            <button type="button" class="action-btn" data-action="edit" data-id="${category.id}" title="Sửa">🖋️</button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+};
+
+const resetForm = () => {
+  const categoryNameSelect = byId("categoryNameSelect");
+  const categoryLimitInput = byId("categoryLimitInput");
+  const addCategoryBtn = byId("addCategoryBtn");
+  const warning = byId("categoryWarning");
+
+  if (categoryNameSelect) categoryNameSelect.value = "";
+  if (categoryLimitInput) categoryLimitInput.value = "";
+  if (addCategoryBtn) addCategoryBtn.textContent = "Thêm danh mục";
+  if (warning) warning.textContent = "";
+
+  editingId = null;
+};
+
+const handleSubmitForm = () => {
+  const monthSelect = byId("monthSelect");
+  const categoryNameSelect = byId("categoryNameSelect");
+  const categoryLimitInput = byId("categoryLimitInput");
+  const warning = byId("categoryWarning");
+
+  if (!monthSelect || !categoryNameSelect || !categoryLimitInput || !warning)
+    return;
+
+  const month = monthSelect.value || getCurrentMonth();
+  const name = String(categoryNameSelect.value || "").trim();
+  const limit = Number(categoryLimitInput.value || 0);
+
+  if (!name) {
+    warning.textContent = "Vui lòng chọn tên danh mục.";
+    return;
+  }
+
+  if (!limit || limit <= 0) {
+    warning.textContent = "Giới hạn phải lớn hơn 0.";
+    return;
+  }
+
+  ensureMonthRecord(month);
+  const categories = getCategories(month);
+
+  if (editingId) {
+    const duplicated = categories.some(
+      (item) =>
+        Number(item.id) !== Number(editingId) &&
+        String(item.name).toLowerCase() === name.toLowerCase(),
+    );
+
+    if (duplicated) {
+      warning.textContent = "Tên danh mục đã tồn tại.";
+      return;
+    }
+
+    const target = categories.find(
+      (item) => Number(item.id) === Number(editingId),
+    );
+    if (!target) return;
+
+    target.name = name;
+    target.budget = limit;
+
+    saveCategories(month, categories);
+    resetForm();
+    renderCategories();
+
+    Swal.fire({
+      icon: "success",
+      title: "Cập nhật thành công",
+      text: "Danh mục đã được cập nhật.",
+      timer: 1200,
+      showConfirmButton: false,
+    });
+
+    return;
+  }
+
+  const duplicated = categories.some(
+    (item) => String(item.name).toLowerCase() === name.toLowerCase(),
+  );
+
+  if (duplicated) {
+    warning.textContent = "Tên danh mục đã tồn tại";
+    return;
+  }
+
+  categories.push({
+    id: Date.now(),
+    name,
+    budget: limit,
+    spent: 0,
+  });
+
+  saveCategories(month, categories);
+  resetForm();
+  renderCategories();
+};
+
+const editCategory = (id) => {
+  const monthSelect = byId("monthSelect");
+  const categoryNameSelect = byId("categoryNameSelect");
+  const categoryLimitInput = byId("categoryLimitInput");
+  const addCategoryBtn = byId("addCategoryBtn");
+  const warning = byId("categoryWarning");
+
+  if (
+    !monthSelect ||
+    !categoryNameSelect ||
+    !categoryLimitInput ||
+    !addCategoryBtn ||
+    !warning
+  )
+    return;
+
+  const month = monthSelect.value || getCurrentMonth();
+  const categories = getCategories(month);
+  const category = categories.find((item) => Number(item.id) === Number(id));
+  if (!category) return;
+
+  categoryNameSelect.value = category.name;
+  categoryLimitInput.value = String(category.budget || "");
+  addCategoryBtn.textContent = "Cập nhật danh mục";
+  warning.textContent = "";
+  editingId = Number(id);
+};
+
+const deleteCategory = (id) => {
+  const monthSelect = byId("monthSelect");
+  if (!monthSelect) return;
+
+  const month = monthSelect.value || getCurrentMonth();
+
+  Swal.fire({
+    title: "Bạn có chắc muốn xóa danh mục này?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Có, xóa",
+    cancelButtonText: "Hủy",
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    const categories = getCategories(month).filter(
+      (item) => Number(item.id) !== Number(id),
+    );
+
+    saveCategories(month, categories);
+
+    if (Number(editingId) === Number(id)) {
+      resetForm();
+    }
+
+    renderCategories();
+  });
+};
+
+const getSpentByMonth = (month) => {
+  const transactions = getTransactions();
+  return transactions
+    .filter((item) => String(item.createdDate || "").startsWith(month))
+    .reduce((total, item) => total + Number(item.total || 0), 0);
+};
+
+const renderRemainingBudget = () => {
+  const monthSelect = byId("monthSelect");
+  const remainingText = byId("remainingText");
+  if (!monthSelect || !remainingText) return;
+
+  const month = monthSelect.value;
+  if (!month) {
+    remainingText.textContent = formatVnd(0);
+    return;
+  }
+
+  const budgets = getBudgets();
+  const budgetAmount = Number(budgets[month] || 0);
+  const spentAmount = getSpentByMonth(month);
+  const remainingAmount = budgetAmount - spentAmount;
+
+  remainingText.textContent = formatVnd(remainingAmount);
+};
+
+const getCurrentUser = () => {
+  const userId = getCurrentUserId();
+  if (!userId) return null;
+
+  const users = getData("users", []);
+  return users.find((u) => String(u.id) === String(userId)) || null;
+};
+
+const requireLogin = () => {
+  if (!getCurrentUserId()) {
+    window.location.href = "login.html";
+    return false;
+  }
+  return true;
 };
 
 const initAccountDropdown = () => {
@@ -130,7 +365,6 @@ const initAccountDropdown = () => {
   const accountInfoName = byId("accountInfoName");
   const accountInfoEmail = byId("accountInfoEmail");
   const accountInfoRole = byId("accountInfoRole");
-
   const menuLogoutBtn = byId("menuLogout");
 
   if (!accountEl || !accountToggle) return;
@@ -140,7 +374,7 @@ const initAccountDropdown = () => {
   if (accountInfoName) accountInfoName.textContent = user?.fullName || "-";
   if (accountInfoEmail) accountInfoEmail.textContent = user?.email || "-";
   if (accountInfoRole)
-    accountInfoRole.textContent = `Vai tro: ${user?.role || "user"}`;
+    accountInfoRole.textContent = `Vai trò: ${user?.role || "user"}`;
 
   accountToggle.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -151,13 +385,14 @@ const initAccountDropdown = () => {
 
   menuLogoutBtn?.addEventListener("click", () => {
     Swal.fire({
-      title: "Are you sure?",
-      text: "You won't be able to revert this!",
+      title: "Bạn có chắc muốn đăng xuất?",
+      text: "Bạn sẽ cần đăng nhập lại để tiếp tục.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#3085d6",
       cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, delete it!",
+      confirmButtonText: "Có, đăng xuất",
+      cancelButtonText: "Hủy",
     }).then((result) => {
       if (result.isConfirmed) {
         localStorage.removeItem("currentUser");
@@ -168,195 +403,49 @@ const initAccountDropdown = () => {
   });
 };
 
-const renderCategories = (month) => {
-  syncMonthSpent(month);
-
-  const grid = byId("categoryGrid");
-  const warning = byId("categoryWarning");
-  if (!grid || !warning) return;
-
-  const monthObj = getMonthRecord(month);
-  const categories = monthObj.categories || [];
-
-  if (categories.length === 0) {
-    grid.innerHTML =
-      '<p class="empty">Chua co danh muc nao trong thang nay.</p>';
-    warning.textContent = "";
-    return;
-  }
-
-  const hasOver = categories.some(
-    (cat) => Number(cat.spent || 0) > Number(cat.budget || 0),
-  );
-  warning.textContent = hasOver ? "Co danh muc da vuot han muc." : "";
-
-  grid.innerHTML = categories
-    .map((cat) => {
-      const spent = Number(cat.spent || 0);
-      const budget = Number(cat.budget || 0);
-      const overClass = spent > budget ? "card-over" : "";
-
-      return `
-        <article class="category-card ${overClass}">
-          <span class="card-icon"><i class="fa-solid fa-dollar-sign"></i></span>
-          <div>
-            <h4 class="card-title">${cat.name}</h4>
-            <p class="card-limit">${formatVnd(budget)} | Da chi: ${formatVnd(spent)}</p>
-          </div>
-          <div class="card-actions">
-            <button type="button" class="action-btn" data-action="edit" data-id="${cat.id}" title="Sua">
-              <i class="fa-solid fa-pen"></i>
-            </button>
-            <button type="button" class="action-btn" data-action="delete" data-id="${cat.id}" title="Xoa">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>
-        </article>
-      `;
-    })
-    .join("");
-};
-
-const addCategory = (month) => {
-  const nameSelect = byId("categoryNameSelect");
-  const limitInput = byId("categoryLimitInput");
-  const warning = byId("categoryWarning");
-
-  if (!nameSelect || !limitInput || !warning) return;
-
-  const name = String(nameSelect.value || "").trim();
-  const limit = Number(limitInput.value);
-
-  if (!name) {
-    warning.textContent = "Vui long chon ten danh muc.";
-    return;
-  }
-
-  if (!limit || limit <= 0) {
-    warning.textContent = "Gioi han phai lon hon 0.";
-    return;
-  }
-
-  const monthly = getData("monthlyCategories", []);
-  const monthObj = monthly.find((m) => m.month === month) || {
-    id: Date.now(),
-    month,
-    categories: [],
-  };
-
-  if (!monthly.find((m) => m.month === month)) monthly.push(monthObj);
-
-  const duplicated = monthObj.categories.some(
-    (cat) => String(cat.name).toLowerCase() === name.toLowerCase(),
-  );
-
-  if (duplicated) {
-    warning.textContent = "Danh muc nay da ton tai trong thang da chon.";
-    return;
-  }
-
-  monthObj.categories.push({
-    id: Date.now(),
-    name,
-    budget: limit,
-    spent: 0,
-  });
-
-  setData("monthlyCategories", monthly);
-  warning.textContent = "";
-  limitInput.value = "";
-  nameSelect.value = "";
-  renderCategories(month);
-};
-
-const updateCategory = (month, categoryId) => {
-  const monthly = getData("monthlyCategories", []);
-  const monthObj = monthly.find((m) => m.month === month);
-  if (!monthObj) return;
-
-  const category = monthObj.categories.find(
-    (cat) => Number(cat.id) === Number(categoryId),
-  );
-  if (!category) return;
-
-  const nextName = window.prompt("Ten danh muc moi:", category.name);
-  if (nextName === null) return;
-  const cleanName = nextName.trim();
-  if (!cleanName) return;
-
-  const nextLimitRaw = window.prompt(
-    "Han muc moi (VND):",
-    String(category.budget),
-  );
-  if (nextLimitRaw === null) return;
-
-  const nextLimit = Number(nextLimitRaw);
-  if (!nextLimit || nextLimit <= 0) {
-    alert("Han muc khong hop le.");
-    return;
-  }
-
-  category.name = cleanName;
-  category.budget = nextLimit;
-  setData("monthlyCategories", monthly);
-  renderCategories(month);
-};
-
-const deleteCategory = (month, categoryId) => {
-  const monthly = getData("monthlyCategories", []);
-  const monthObj = monthly.find((m) => m.month === month);
-  if (!monthObj) return;
-
-  const ok = window.confirm("Ban co chac muon xoa danh muc nay?");
-  if (!ok) return;
-
-  monthObj.categories = monthObj.categories.filter(
-    (cat) => Number(cat.id) !== Number(categoryId),
-  );
-  setData("monthlyCategories", monthly);
-  renderCategories(month);
-};
-
-const initCategoryActions = () => {
+const initMonthSync = () => {
   const monthSelect = byId("monthSelect");
-  const addCategoryBtn = byId("addCategoryBtn");
-  const grid = byId("categoryGrid");
+  if (!monthSelect) return;
 
-  if (!monthSelect || !addCategoryBtn || !grid) return;
-
-  if (!monthSelect.value) monthSelect.value = getCurrentMonth();
-
-  const getMonth = () => monthSelect.value || getCurrentMonth();
-
-  addCategoryBtn.addEventListener("click", () => addCategory(getMonth()));
+  monthSelect.value = getSelectedBudgetMonth() || getCurrentMonth();
+  saveSelectedBudgetMonth(monthSelect.value);
 
   monthSelect.addEventListener("change", () => {
-    renderRemainingBudget(getMonth());
-    renderCategories(getMonth());
+    saveSelectedBudgetMonth(monthSelect.value || getCurrentMonth());
+    resetForm();
+    renderRemainingBudget();
+    renderCategories();
   });
 
-  grid.addEventListener("click", (event) => {
-    const actionButton = event.target.closest("button[data-action]");
-    if (!actionButton) return;
+  renderRemainingBudget();
+};
 
-    const action = actionButton.dataset.action;
-    const id = actionButton.dataset.id;
+const initCategoryCrud = () => {
+  const addCategoryBtn = byId("addCategoryBtn");
+  const categoryGrid = byId("categoryGrid");
 
-    if (action === "edit") updateCategory(getMonth(), id);
-    if (action === "delete") deleteCategory(getMonth(), id);
+  addCategoryBtn?.addEventListener("click", handleSubmitForm);
+
+  categoryGrid?.addEventListener("click", (event) => {
+    const actionBtn = event.target.closest("button[data-action]");
+    if (!actionBtn) return;
+
+    const action = actionBtn.dataset.action;
+    const id = Number(actionBtn.dataset.id);
+
+    if (action === "edit") editCategory(id);
+    if (action === "delete") deleteCategory(id);
   });
 
-  renderRemainingBudget(getMonth());
-  window.addEventListener("focus", () => renderRemainingBudget(getMonth()));
-  renderCategories(getMonth());
+  renderCategories();
 };
 
 const init = () => {
-  initStorage();
   if (!requireLogin()) return;
 
   initAccountDropdown();
-  initCategoryActions();
+  initMonthSync();
+  initCategoryCrud();
 };
 
 document.addEventListener("DOMContentLoaded", init);
