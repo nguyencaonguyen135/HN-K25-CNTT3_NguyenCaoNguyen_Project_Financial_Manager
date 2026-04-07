@@ -3,7 +3,7 @@
     id: 1,
     fullName: "Nguyen Van A",
     email: "nguyenvana@gmail.com",
-    password: btoa("123456"),
+    password: "123456",
     status: true,
     phone: "0987654321",
     gender: true,
@@ -13,7 +13,7 @@
     id: 2,
     fullName: "admin",
     email: "admin@gmail.com",
-    password: btoa("123456"),
+    password: "123456",
     status: true,
     phone: "0987654321",
     gender: true,
@@ -23,7 +23,7 @@
     id: 3,
     fullName: "Pham Thi B",
     email: "phamthib@gmail.com",
-    password: btoa("123456"),
+    password: "123456",
     status: true,
     phone: "0987654321",
     gender: false,
@@ -50,16 +50,11 @@ if (!localStorage.getItem("users")) {
 
 const getCurrentUser = () => {
   const users = getUsers();
-  const id =
-    localStorage.getItem("currentUser") ||
-    localStorage.getItem("currentUserId");
+  const id = localStorage.getItem("currentUser");
   return users.find((u) => String(u.id) === String(id));
 };
 
-const getCurrentUserId = () =>
-  localStorage.getItem("currentUser") ||
-  localStorage.getItem("currentUserId") ||
-  "guest";
+const getCurrentUserId = () => localStorage.getItem("currentUser") || "guest";
 
 const getUserScopedKey = (baseKey) => `${baseKey}_${getCurrentUserId()}`;
 
@@ -172,7 +167,6 @@ if (menuLogoutBtn) {
     }).then((result) => {
       if (result.isConfirmed) {
         localStorage.removeItem("currentUser");
-        localStorage.removeItem("currentUserId");
         window.location.href = "login.html";
       }
     });
@@ -307,7 +301,7 @@ const validateChangePassword = () => {
     return { isValid: false };
   }
 
-  if (btoa(oldPassword) !== String(currentUser ? currentUser.password : "")) {
+  if (oldPassword !== String(currentUser ? currentUser.password : "")) {
     if (oldPasswordError) {
       oldPasswordError.textContent = "Mật khẩu cũ không đúng";
     }
@@ -350,7 +344,7 @@ const handleChangePassword = () => {
     return;
   }
 
-  users[userIndex].password = btoa(validation.newPassword);
+  users[userIndex].password = validation.newPassword;
   saveUsers(users);
 
   currentUser = users[userIndex];
@@ -384,6 +378,61 @@ if (changePasswordModal) {
   });
 }
 
+const validateProfileForm = () => {
+  if (!nameInput || !emailInput || !phoneInput || !genderInput) {
+    return { isValid: false };
+  }
+
+  const fullName = String(nameInput.value || "").trim();
+  const email = String(emailInput.value || "").trim();
+  const phone = String(phoneInput.value || "").trim();
+  const genderText = String(genderInput.value || "")
+    .trim()
+    .toLowerCase();
+
+  if (!fullName) {
+    Swal.fire("Thiếu thông tin", "Họ và tên không được để trống", "warning");
+    return { isValid: false };
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    Swal.fire(
+      "Email không hợp lệ",
+      "Vui lòng nhập đúng định dạng email",
+      "warning",
+    );
+    return { isValid: false };
+  }
+
+  const phoneRegex = /^0\d{9,10}$/;
+  if (!phoneRegex.test(phone)) {
+    Swal.fire(
+      "Số điện thoại không hợp lệ",
+      "Số điện thoại phải bắt đầu bằng 0 và có 10-11 chữ số",
+      "warning",
+    );
+    return { isValid: false };
+  }
+
+  if (genderText !== "nam" && genderText !== "nữ" && genderText !== "nu") {
+    Swal.fire(
+      "Giới tính không hợp lệ",
+      'Vui lòng nhập "Nam" hoặc "Nữ"',
+      "warning",
+    );
+    return { isValid: false };
+  }
+
+  return {
+    isValid: true,
+    fullName,
+    email,
+    phone,
+    isMale: genderText === "nam",
+  };
+};
+
 // Cập nhật profile: validate email trùng và lưu lại thông tin user.
 if (updateBtn) {
   updateBtn.addEventListener("click", () => {
@@ -391,8 +440,13 @@ if (updateBtn) {
       return;
     }
 
+    const validation = validateProfileForm();
+    if (!validation.isValid) {
+      return;
+    }
+
     const users = getUsers();
-    const newEmail = emailInput.value.trim().toLowerCase();
+    const newEmail = validation.email.toLowerCase();
 
     const isEmailDuplicated = users.some(
       (u) =>
@@ -421,10 +475,10 @@ if (updateBtn) {
         return;
       }
 
-      currentUser.fullName = nameInput.value.trim();
-      currentUser.email = emailInput.value.trim();
-      currentUser.phone = phoneInput.value.trim();
-      currentUser.gender = genderInput.value.toLowerCase() === "nam";
+      currentUser.fullName = validation.fullName;
+      currentUser.email = validation.email;
+      currentUser.phone = validation.phone;
+      currentUser.gender = validation.isMale;
 
       const index = users.findIndex((u) => u.id === currentUser.id);
       users[index] = currentUser;

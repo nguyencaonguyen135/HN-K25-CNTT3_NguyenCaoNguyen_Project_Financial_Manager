@@ -3,7 +3,7 @@
     id: 1,
     fullName: "Nguyen Van A",
     email: "nguyenvana@gmail.com",
-    password: btoa("123456"),
+    password: "123456",
     status: true,
     phone: "0987654321",
     gender: true,
@@ -13,7 +13,7 @@
     id: 2,
     fullName: "admin",
     email: "admin@gmail.com",
-    password: btoa("123456"),
+    password: "123456",
     status: true,
     phone: "0987654321",
     gender: true,
@@ -23,7 +23,7 @@
     id: 3,
     fullName: "Pham Thi B",
     email: "phamthib@gmail.com",
-    password: btoa("123456"),
+    password: "123456",
     status: true,
     phone: "0987654321",
     gender: false,
@@ -41,17 +41,11 @@ const setData = (key, value) => {
 };
 
 const getCurrentUserId = () => {
-  return (
-    localStorage.getItem("currentUser") ||
-    localStorage.getItem("currentUserId") ||
-    "guest"
-  );
+  return localStorage.getItem("currentUser") || "guest";
 };
 
 const getLoggedInUserId = () => {
-  return (
-    localStorage.getItem("currentUser") || localStorage.getItem("currentUserId")
-  );
+  return localStorage.getItem("currentUser");
 };
 
 const getUserScopedKey = (baseKey) => {
@@ -267,7 +261,6 @@ const initAccountDropdown = () => {
       }).then((result) => {
         if (result.isConfirmed) {
           localStorage.removeItem("currentUser");
-          localStorage.removeItem("currentUserId");
           window.location.href = "login.html";
         }
       });

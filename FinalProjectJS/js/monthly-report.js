@@ -8,11 +8,7 @@ const getFinanceStore = () => getData(STORAGE_KEY, {});
 const getUsers = () => getData("users", []);
 
 const getCurrentUserId = () => {
-  return (
-    localStorage.getItem("currentUser") ||
-    localStorage.getItem("currentUserId") ||
-    "guest"
-  );
+  return localStorage.getItem("currentUser") || "guest";
 };
 
 const getUserScopedKey = (baseKey) => `${baseKey}_${getCurrentUserId()}`;
@@ -624,7 +620,6 @@ const initAccountDropdown = () => {
   if (menuLogoutBtn) {
     menuLogoutBtn.addEventListener("click", () => {
       localStorage.removeItem("currentUser");
-      localStorage.removeItem("currentUserId");
       window.location.href = "login.html";
     });
   }

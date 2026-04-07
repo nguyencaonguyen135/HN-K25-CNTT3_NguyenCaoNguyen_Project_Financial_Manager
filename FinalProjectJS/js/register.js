@@ -3,7 +3,7 @@ const users = [
     id: 1,
     fullName: "Nguyen Van A",
     email: "nguyenvana@gmail.com",
-    password: btoa("123456"),
+    password: "123456",
     status: true,
     phone: "0987654321",
     gender: true,
@@ -13,7 +13,7 @@ const users = [
     id: 2,
     fullName: "admin",
     email: "admin@gmail.com",
-    password: btoa("123456"),
+    password: "123456",
     status: true,
     phone: "0987654321",
     gender: true,
@@ -23,7 +23,7 @@ const users = [
     id: 3,
     fullName: "Pham Thi B",
     email: "phamthib@gmail.com",
-    password: btoa("123456"),
+    password: "123456",
     status: true,
     phone: "0987654321",
     gender: false,
@@ -119,7 +119,6 @@ const register = (e) => {
   const password = passwordEl.value.trim();
   const confirm = confirmEl.value.trim();
 
-  // validate
 
   if (!email || !password || !confirm) {
     return showPopup("Vui lòng điền đầy đủ thông tin", {
@@ -164,7 +163,7 @@ const register = (e) => {
   const newUser = {
     id: Date.now(),
     email,
-    password: btoa(password),
+    password: password,
     role: "user",
     status: true,
   };
@@ -187,6 +186,12 @@ if (registerBtnEl) {
 if (formEl) {
   formEl.addEventListener("submit", register);
 }
+
+
+
+
+
+
 
 
 
@@ -320,4 +325,3 @@ if (formEl) {
 //     window.location.href = "login.html";
 //   }, 1000);
 // });
-

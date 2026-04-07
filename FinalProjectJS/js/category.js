@@ -8,11 +8,7 @@ const setData = (key, value) => {
 };
 
 const getCurrentUserId = () => {
-  return (
-    localStorage.getItem("currentUser") ||
-    localStorage.getItem("currentUserId") ||
-    null
-  );
+  return localStorage.getItem("currentUser") || null;
 };
 
 const getUserScopedKey = (baseKey) => {
@@ -486,7 +482,6 @@ const initAccountDropdown = () => {
       }).then((result) => {
         if (result.isConfirmed) {
           localStorage.removeItem("currentUser");
-          localStorage.removeItem("currentUserId");
           window.location.href = "login.html";
         }
       });

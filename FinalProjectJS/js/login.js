@@ -3,7 +3,7 @@ const users = [
     id: 1,
     fullName: "Nguyen Van A",
     email: "nguyenvana@gmail.com",
-    password: btoa("123456"),
+    password: "123456",
     status: true,
     phone: "0987654321",
     gender: true,
@@ -13,7 +13,7 @@ const users = [
     id: 2,
     fullName: "admin",
     email: "admin@gmail.com",
-    password: btoa("123456"),
+    password: "123456",
     status: true,
     phone: "0987654321",
     gender: true,
@@ -23,7 +23,7 @@ const users = [
     id: 3,
     fullName: "Pham Thi B",
     email: "phamthib@gmail.com",
-    password: btoa("123456"),
+    password: "123456",
     status: true,
     phone: "0987654321",
     gender: false,
@@ -122,14 +122,6 @@ const showPopup = (
   }, durationMs);
 };
 
-const decodeStoredPassword = (stored) => {
-  try {
-    return atob(stored);
-  } catch {
-    return stored;
-  }
-};
-
 const login = (e) => {
   e.preventDefault();
 
@@ -148,7 +140,7 @@ const login = (e) => {
     return u.email === emailValue;
   });
 
-  if (!user || decodeStoredPassword(user.password) !== passwordValue) {
+  if (!user || user.password !== passwordValue) {
     return showPopup("Sai email hoặc mật khẩu", {
       type: "error",
       title: "Đăng nhập thất bại",
@@ -188,6 +180,20 @@ if (loginBtnEl) {
 if (formEl) {
   formEl.addEventListener("submit", login);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -344,4 +350,3 @@ if (formEl) {
 //     }
 //   }, 1000);
 // });
-
